@@ -141,7 +141,7 @@ def tanteo(
 def crear_interfaz():
     ventana = tk.Tk()
     ventana.title("Tanteo de bulbo húmedo")
-    ventana.geometry("700x540")
+    ventana.geometry("760x620")
 
     campos = {
         "Temperatura de la mezcla inicial": tk.StringVar(value="50"),
@@ -150,6 +150,8 @@ def crear_interfaz():
         "Temperatura de inicio del tanteo": tk.StringVar(value="22"),
         "Presión total del sistema": tk.StringVar(value="0.8533"),
     }
+
+    etiquetas_campo = {}
 
     def registrar_en_texto(mensaje):
         cuadro_resultados.insert(tk.END, f"{mensaje}\n")
@@ -190,7 +192,9 @@ def crear_interfaz():
 
     ttk.Label(marco, text="Parámetros de entrada", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 8))
     for fila, (etiqueta, variable) in enumerate(campos.items(), start=1):
-        ttk.Label(marco, text=etiqueta).grid(row=fila, column=0, sticky="w", pady=4)
+        etiqueta_widget = ttk.Label(marco, text=etiqueta)
+        etiqueta_widget.grid(row=fila, column=0, sticky="w", pady=4)
+        etiquetas_campo[etiqueta] = etiqueta_widget
         ttk.Entry(marco, textvariable=variable, width=25).grid(row=fila, column=1, pady=4, padx=(8, 0))
 
     ttk.Label(marco, text="Sistema de unidades").grid(row=len(campos) + 1, column=0, sticky="w", pady=6)
@@ -198,17 +202,62 @@ def crear_interfaz():
     selector_sistema.set("SI")
     selector_sistema.grid(row=len(campos) + 1, column=1, pady=6, padx=(8, 0))
 
-    ttk.Button(marco, text="Calcular", command=ejecutar_calculo).grid(row=len(campos) + 2, column=0, columnspan=2, pady=10)
+    unidades_por_sistema = {
+        "SI": {"temperatura": "°C", "humedad": "kgv/kga", "presion": "bar"},
+        "I": {"temperatura": "°F", "humedad": "lbv/lba", "presion": "psia"},
+    }
 
-    ttk.Label(marco, text="Resultados", font=("Arial", 12, "bold")).grid(row=len(campos) + 3, column=0, sticky="w", pady=(12, 4))
+    def actualizar_unidades(event=None):
+        unidades = unidades_por_sistema.get(selector_sistema.get(), unidades_por_sistema["SI"])
+        etiquetas_campo["Temperatura de la mezcla inicial"].configure(
+            text=f"Temperatura de la mezcla inicial ({unidades['temperatura']})"
+        )
+        etiquetas_campo["Temperatura de inicio del tanteo"].configure(
+            text=f"Temperatura de inicio del tanteo ({unidades['temperatura']})"
+        )
+        etiquetas_campo["Humedad específica inicial"].configure(
+            text=f"Humedad específica inicial ({unidades['humedad']})"
+        )
+        etiquetas_campo["Presión total del sistema"].configure(
+            text=f"Presión total del sistema ({unidades['presion']})"
+        )
+
+    selector_sistema.bind("<<ComboboxSelected>>", actualizar_unidades)
+    actualizar_unidades()
+
+    marco_unidades = ttk.LabelFrame(marco, text="Guía de unidades", padding=8)
+    marco_unidades.grid(row=len(campos) + 2, column=0, columnspan=2, sticky="ew", pady=(8, 4))
+    encabezados = ["Sistema", "Temperatura", "Humedad específica", "Presión total"]
+    for col, encabezado in enumerate(encabezados):
+        ttk.Label(marco_unidades, text=encabezado, font=("Arial", 9, "bold")).grid(row=0, column=col, padx=4, pady=2)
+
+    ttk.Label(marco_unidades, text="SI").grid(row=1, column=0, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="°C").grid(row=1, column=1, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="kgv/kga").grid(row=1, column=2, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="bar").grid(row=1, column=3, padx=4, pady=2)
+
+    ttk.Label(marco_unidades, text="I").grid(row=2, column=0, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="°F").grid(row=2, column=1, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="lbv/lba").grid(row=2, column=2, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="psia").grid(row=2, column=3, padx=4, pady=2)
+
+    ttk.Label(
+        marco,
+        text="Nota: Phi es un valor numérico entre 0 y 1 (no ingrese porcentaje).",
+        foreground="red",
+    ).grid(row=len(campos) + 3, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+    ttk.Button(marco, text="Calcular", command=ejecutar_calculo).grid(row=len(campos) + 4, column=0, columnspan=2, pady=10)
+
+    ttk.Label(marco, text="Resultados", font=("Arial", 12, "bold")).grid(row=len(campos) + 5, column=0, sticky="w", pady=(12, 4))
     cuadro_resultados = tk.Text(marco, height=12, width=70)
-    cuadro_resultados.grid(row=len(campos) + 4, column=0, columnspan=2, sticky="nsew")
+    cuadro_resultados.grid(row=len(campos) + 6, column=0, columnspan=2, sticky="nsew")
 
     barra_scroll = ttk.Scrollbar(marco, orient=tk.VERTICAL, command=cuadro_resultados.yview)
-    barra_scroll.grid(row=len(campos) + 4, column=2, sticky="ns")
+    barra_scroll.grid(row=len(campos) + 6, column=2, sticky="ns")
     cuadro_resultados.configure(yscrollcommand=barra_scroll.set)
 
-    marco.rowconfigure(len(campos) + 4, weight=1)
+    marco.rowconfigure(len(campos) + 6, weight=1)
     marco.columnconfigure(1, weight=1)
 
     ventana.mainloop()
