@@ -1,5 +1,8 @@
-'''En este código está contenido el algoritmo que permite hallar 
+'''En este código está contenido el algoritmo que permite hallar
 la temperatura de bulbo húmedo dadas las condiciones necesarias de la situación particular en la que se encuentren'''
+
+import tkinter as tk
+from tkinter import messagebox, ttk
 
 ########################## Aquí se encuentran indexados los datos de las tablas A-12 y A-12I para interpolar adecuadamente
 tempertaura_CelsiusTablas = [0,4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 40, 45, 50]
@@ -58,76 +61,207 @@ def phi_a_humedad_especifica(phi, Temperatura, presion_total, sistema_Medida ="S
     humedad_especifica = 0.622 * phi*presion_saturacion /(presion_total-phi*presion_saturacion)
     return humedad_especifica
     
-def tanteo( temperatura_BulboSeco_Inicial, humedad_Especifica_Inicial, phi_final ,temperatura_inicio_tanteo, presion_total, sistema ="SI"):
-    '''Esta función se encarga de hacer el tanteo para hallar la temperatura de bulbo húmedo'''
+def tanteo(
+    temperatura_BulboSeco_Inicial,
+    humedad_Especifica_Inicial,
+    phi_final,
+    temperatura_inicio_tanteo,
+    presion_total,
+    sistema="SI",
+    logger=print,
+):
+    '''Esta función se encarga de hacer el tanteo para hallar la temperatura de bulbo húmedo.
+
+    El parámetro ``logger`` permite enviar los mensajes a una función distinta de ``print``
+    (por ejemplo, para mostrarlos en una interfaz gráfica o almacenarlos en una lista).
+    '''
+
+    def registrar(mensaje):
+        if logger:
+            logger(mensaje)
+
     condicion = True
     if sistema == "SI":
         h_m = entalpia_Mezcla(temperatura_BulboSeco_Inicial, humedad_Especifica_Inicial)
         numeracion_tanteo = 1
         while condicion:
-            print("Iteración ", numeracion_tanteo, "del tanteo")
-            humedad_tanteo = (h_m-1.005*temperatura_inicio_tanteo)/(2501.7+1.82*temperatura_inicio_tanteo)
-            print("Humedad Específica parcial del tanteo: ", humedad_tanteo, " kgv/kga")
-            presion_SaturadaTanteo = presion_total*humedad_tanteo/(phi_final*0.622+phi_final*humedad_tanteo)
-            print("Presión Saturada parcial del tanteo: ", presion_SaturadaTanteo, "bar")
+            registrar(f"Iteración {numeracion_tanteo} del tanteo")
+            humedad_tanteo = (h_m - 1.005 * temperatura_inicio_tanteo) / (2501.7 + 1.82 * temperatura_inicio_tanteo)
+            registrar(f"Humedad Específica parcial del tanteo: {humedad_tanteo} kgv/kga")
+            presion_SaturadaTanteo = presion_total * humedad_tanteo / (phi_final * 0.622 + phi_final * humedad_tanteo)
+            registrar(f"Presión Saturada parcial del tanteo: {presion_SaturadaTanteo} bar")
             temperatura_BulboHumedo = obtener_DatoTemperaturaSaturacionTablaTemperatura(presion_SaturadaTanteo, "SI")
-            print("Temperatura Parcial del tanteo: ", temperatura_BulboHumedo, "°C")
-            numeracion_tanteo+=1
-            print("Tanteo no exitoso")
+            registrar(f"Temperatura Parcial del tanteo: {temperatura_BulboHumedo} °C")
+            numeracion_tanteo += 1
+            registrar("Tanteo no exitoso")
             if abs(temperatura_BulboHumedo - temperatura_inicio_tanteo) <= 0.01:
                 # Se repite el tanteo para dar la respuesta, con la temperatura de bulbo húmedo inmediatamente anterior a la que hallamos
-                print("Iteración ", numeracion_tanteo, " del tanteo")
-                humedad_tanteo = (h_m-1.005*temperatura_BulboHumedo)/(2501.7+1.82*temperatura_BulboHumedo)
-                print("Humedad Específica final del tanteo: ", humedad_tanteo, "kgv/kga")
-                presion_SaturadaTanteo = presion_total*humedad_tanteo/(phi_final*0.622+phi_final*humedad_tanteo)
-                print("Presión Saturada final del tanteo: ", presion_SaturadaTanteo, "bar")
+                registrar(f"Iteración {numeracion_tanteo} del tanteo")
+                humedad_tanteo = (h_m - 1.005 * temperatura_BulboHumedo) / (2501.7 + 1.82 * temperatura_BulboHumedo)
+                registrar(f"Humedad Específica final del tanteo: {humedad_tanteo} kgv/kga")
+                presion_SaturadaTanteo = presion_total * humedad_tanteo / (phi_final * 0.622 + phi_final * humedad_tanteo)
+                registrar(f"Presión Saturada final del tanteo: {presion_SaturadaTanteo} bar")
                 temperatura_BulboHumedo = obtener_DatoTemperaturaSaturacionTablaTemperatura(presion_SaturadaTanteo, "SI")
                 condicion = False
-                print("Temperatura Final del tanteo: ", temperatura_BulboHumedo, "°C")
-                print("Tanteo Exitoso")
+                registrar(f"Temperatura Final del tanteo: {temperatura_BulboHumedo} °C")
+                registrar("Tanteo Exitoso")
                 return temperatura_BulboHumedo
             else:
                 temperatura_inicio_tanteo = temperatura_BulboHumedo
 
     if sistema == "I":
         numeracion_tanteo = 1
-        h_m = entalpia_Mezcla(temperatura_BulboSeco_Inicial,humedad_Especifica_Inicial, "I")
+        h_m = entalpia_Mezcla(temperatura_BulboSeco_Inicial, humedad_Especifica_Inicial, "I")
         while condicion:
-            print("Iteración ", numeracion_tanteo, " del tanteo")
-            humedad_tanteo = (h_m-0.240*temperatura_inicio_tanteo)/(1061.5+0.435*(temperatura_inicio_tanteo))
-            print("Humedad Específica parcial del tanteo: ", humedad_tanteo, "lbv/lba")
-            presion_SaturadaTanteo = presion_total*humedad_tanteo/(phi_final*(0.622+humedad_tanteo))
-            print("Presión Saturada parcial del tanteo: ", presion_SaturadaTanteo, "psia")
+            registrar(f"Iteración {numeracion_tanteo} del tanteo")
+            humedad_tanteo = (h_m - 0.240 * temperatura_inicio_tanteo) / (1061.5 + 0.435 * (temperatura_inicio_tanteo))
+            registrar(f"Humedad Específica parcial del tanteo: {humedad_tanteo} lbv/lba")
+            presion_SaturadaTanteo = presion_total * humedad_tanteo / (phi_final * (0.622 + humedad_tanteo))
+            registrar(f"Presión Saturada parcial del tanteo: {presion_SaturadaTanteo} psia")
             temperatura_BulboHumedo = obtener_DatoTemperaturaSaturacionTablaTemperatura(presion_SaturadaTanteo, "I")
-            print("Temperatura Parcial del Tanteo: ", temperatura_BulboHumedo, "°F")
-            numeracion_tanteo+=1
+            registrar(f"Temperatura Parcial del Tanteo: {temperatura_BulboHumedo} °F")
+            numeracion_tanteo += 1
             if (temperatura_BulboHumedo - temperatura_inicio_tanteo) <= 0.01:
                 # Se repite el tanteo para dar la respuesta
-                print("Iteración ", numeracion_tanteo, " del tanteo")
-                humedad_tanteo = (h_m -0.240*temperatura_BulboHumedo)/(1061.5+0.435*(temperatura_BulboHumedo))
-                print("Humedad Específica final del tanteo: ", humedad_tanteo, "lbv/lba")
-                presion_SaturadaTanteo = presion_total*humedad_tanteo/(phi_final*(0.622+humedad_tanteo))
-                print("Presión Saturada final del tanteo: ", presion_SaturadaTanteo, "psia")
+                registrar(f"Iteración {numeracion_tanteo} del tanteo")
+                humedad_tanteo = (h_m - 0.240 * temperatura_BulboHumedo) / (1061.5 + 0.435 * (temperatura_BulboHumedo))
+                registrar(f"Humedad Específica final del tanteo: {humedad_tanteo} lbv/lba")
+                presion_SaturadaTanteo = presion_total * humedad_tanteo / (phi_final * (0.622 + humedad_tanteo))
+                registrar(f"Presión Saturada final del tanteo: {presion_SaturadaTanteo} psia")
                 temperatura_BulboHumedo = obtener_DatoTemperaturaSaturacionTablaTemperatura(presion_SaturadaTanteo, "I")
                 condicion = False
-                print("Temperatura Final del tanteo: ", temperatura_BulboHumedo, " °F")
+                registrar(f"Temperatura Final del tanteo: {temperatura_BulboHumedo} °F")
                 return temperatura_BulboHumedo
             else:
                 temperatura_inicio_tanteo = temperatura_BulboHumedo
                 
 ###########################
-#En esta sección van a poner los datos que sean necesarios para su situación particular:
-Temperatura_de_la_Mezcla_Inicial = 50 
-phi_Inicial = 0 #Solo hace falta si van a calcular la humedad específica en función de la humedad realtiva
-Presion_Sistema = 0.8533 #bar, la de medallo
-Humedad_Especifica_Inicial = 0.0044859 #phi_a_humedad_especifica(phi_Inicial, Temperatura_de_la_Mezcla_Inicial, Presion_Sistema)}
-#Humedad_Especifica_Inicial = phi_a_humedad_especifica(phi_Inicial, Temperatura_de_la_Mezcla_Inicial, Presion_Sistema)
-sistema = "SI"  # "SI" para métrico y "I" para inglés
-Temperatura_de_Inicio_del_Tanteo = 22 # Esta la deben definir ustedes jejeje
-phi_final = 0.95    #Esta es igual a 1 si es bulbo húmedo, si no, debe ser cambiada
 
-#Esta llamada a la función devolverá los resultados del proceso, por favor, úsenlo como guía, deben hacer todo el procedimiento escrito adecuadamente
-#Esto solo es una ayuda para guiarse en los resultados parciales y final para que me les vaya bien en el parcial
-tanteo(Temperatura_de_la_Mezcla_Inicial, Humedad_Especifica_Inicial, phi_final, Temperatura_de_Inicio_del_Tanteo, Presion_Sistema, "SI")
 
-#print(obtener_DatoPresionSaturacionTablaTemperatura(22,"SI"))
+def crear_interfaz():
+    ventana = tk.Tk()
+    ventana.title("Tanteo de bulbo húmedo")
+    ventana.geometry("760x620")
+
+    campos = {
+        "Temperatura de la mezcla inicial": tk.StringVar(value="50"),
+        "Humedad específica inicial": tk.StringVar(value="0.0044859"),
+        "Phi final": tk.StringVar(value="0.95"),
+        "Temperatura de inicio del tanteo": tk.StringVar(value="22"),
+        "Presión total del sistema": tk.StringVar(value="0.8533"),
+    }
+
+    etiquetas_campo = {}
+
+    def registrar_en_texto(mensaje):
+        cuadro_resultados.insert(tk.END, f"{mensaje}\n")
+        cuadro_resultados.see(tk.END)
+
+    def ejecutar_calculo():
+        cuadro_resultados.delete("1.0", tk.END)
+        try:
+            temperatura_mezcla = float(campos["Temperatura de la mezcla inicial"].get())
+            humedad_especifica = float(campos["Humedad específica inicial"].get())
+            phi_final_valor = float(campos["Phi final"].get())
+            temperatura_tanteo = float(campos["Temperatura de inicio del tanteo"].get())
+            presion_total = float(campos["Presión total del sistema"].get())
+        except ValueError:
+            messagebox.showerror("Datos inválidos", "Por favor ingrese únicamente valores numéricos.")
+            return
+
+        sistema_seleccionado = selector_sistema.get()
+        if sistema_seleccionado not in {"SI", "I"}:
+            messagebox.showerror("Sistema inválido", "Seleccione un sistema de unidades válido.")
+            return
+
+        registrar_en_texto("Iniciando tanteo...\n")
+        temperatura_resultado = tanteo(
+            temperatura_mezcla,
+            humedad_especifica,
+            phi_final_valor,
+            temperatura_tanteo,
+            presion_total,
+            sistema_seleccionado,
+            logger=registrar_en_texto,
+        )
+        registrar_en_texto("\nResultado")
+        registrar_en_texto(f"Temperatura de bulbo húmedo: {temperatura_resultado}")
+
+    marco = ttk.Frame(ventana, padding=12)
+    marco.pack(fill=tk.BOTH, expand=True)
+
+    ttk.Label(marco, text="Parámetros de entrada", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 8))
+    for fila, (etiqueta, variable) in enumerate(campos.items(), start=1):
+        etiqueta_widget = ttk.Label(marco, text=etiqueta)
+        etiqueta_widget.grid(row=fila, column=0, sticky="w", pady=4)
+        etiquetas_campo[etiqueta] = etiqueta_widget
+        ttk.Entry(marco, textvariable=variable, width=25).grid(row=fila, column=1, pady=4, padx=(8, 0))
+
+    ttk.Label(marco, text="Sistema de unidades").grid(row=len(campos) + 1, column=0, sticky="w", pady=6)
+    selector_sistema = ttk.Combobox(marco, values=["SI", "I"], state="readonly", width=22)
+    selector_sistema.set("SI")
+    selector_sistema.grid(row=len(campos) + 1, column=1, pady=6, padx=(8, 0))
+
+    unidades_por_sistema = {
+        "SI": {"temperatura": "°C", "humedad": "kgv/kga", "presion": "bar"},
+        "I": {"temperatura": "°F", "humedad": "lbv/lba", "presion": "psia"},
+    }
+
+    def actualizar_unidades(event=None):
+        unidades = unidades_por_sistema.get(selector_sistema.get(), unidades_por_sistema["SI"])
+        etiquetas_campo["Temperatura de la mezcla inicial"].configure(
+            text=f"Temperatura de la mezcla inicial ({unidades['temperatura']})"
+        )
+        etiquetas_campo["Temperatura de inicio del tanteo"].configure(
+            text=f"Temperatura de inicio del tanteo ({unidades['temperatura']})"
+        )
+        etiquetas_campo["Humedad específica inicial"].configure(
+            text=f"Humedad específica inicial ({unidades['humedad']})"
+        )
+        etiquetas_campo["Presión total del sistema"].configure(
+            text=f"Presión total del sistema ({unidades['presion']})"
+        )
+
+    selector_sistema.bind("<<ComboboxSelected>>", actualizar_unidades)
+    actualizar_unidades()
+
+    marco_unidades = ttk.LabelFrame(marco, text="Guía de unidades", padding=8)
+    marco_unidades.grid(row=len(campos) + 2, column=0, columnspan=2, sticky="ew", pady=(8, 4))
+    encabezados = ["Sistema", "Temperatura", "Humedad específica", "Presión total"]
+    for col, encabezado in enumerate(encabezados):
+        ttk.Label(marco_unidades, text=encabezado, font=("Arial", 9, "bold")).grid(row=0, column=col, padx=4, pady=2)
+
+    ttk.Label(marco_unidades, text="SI").grid(row=1, column=0, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="°C").grid(row=1, column=1, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="kgv/kga").grid(row=1, column=2, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="bar").grid(row=1, column=3, padx=4, pady=2)
+
+    ttk.Label(marco_unidades, text="I").grid(row=2, column=0, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="°F").grid(row=2, column=1, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="lbv/lba").grid(row=2, column=2, padx=4, pady=2)
+    ttk.Label(marco_unidades, text="psia").grid(row=2, column=3, padx=4, pady=2)
+
+    ttk.Label(
+        marco,
+        text="Nota: Phi es un valor numérico entre 0 y 1 (no ingrese porcentaje).",
+        foreground="red",
+    ).grid(row=len(campos) + 3, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+    ttk.Button(marco, text="Calcular", command=ejecutar_calculo).grid(row=len(campos) + 4, column=0, columnspan=2, pady=10)
+
+    ttk.Label(marco, text="Resultados", font=("Arial", 12, "bold")).grid(row=len(campos) + 5, column=0, sticky="w", pady=(12, 4))
+    cuadro_resultados = tk.Text(marco, height=12, width=70)
+    cuadro_resultados.grid(row=len(campos) + 6, column=0, columnspan=2, sticky="nsew")
+
+    barra_scroll = ttk.Scrollbar(marco, orient=tk.VERTICAL, command=cuadro_resultados.yview)
+    barra_scroll.grid(row=len(campos) + 6, column=2, sticky="ns")
+    cuadro_resultados.configure(yscrollcommand=barra_scroll.set)
+
+    marco.rowconfigure(len(campos) + 6, weight=1)
+    marco.columnconfigure(1, weight=1)
+
+    ventana.mainloop()
+
+
+if __name__ == "__main__":
+    crear_interfaz()
